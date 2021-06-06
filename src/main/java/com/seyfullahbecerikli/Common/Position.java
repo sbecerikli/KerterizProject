@@ -1,3 +1,5 @@
+package com.seyfullahbecerikli.Common;
+
 public class Position {
 
     private float XCoordinate;

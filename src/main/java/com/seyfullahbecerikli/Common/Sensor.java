@@ -1,3 +1,5 @@
+package com.seyfullahbecerikli.Common;
+
 public class Sensor{
 
     private Position position;

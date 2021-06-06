@@ -1,5 +1,6 @@
-import java.io.UnsupportedEncodingException;
-import java.util.Arrays;
+package com.seyfullahbecerikli.Center;
+
+import java.util.Collections;
 import java.util.Properties;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -8,9 +9,13 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 
 import com.google.gson.Gson;
 
-public class Center
+import com.seyfullahbecerikli.Common.Position;
+import com.seyfullahbecerikli.Common.Sensor;
+import com.seyfullahbecerikli.Common.Target;
+
+public class CenterOperations
 {
-    public static void main(String[] args) throws InterruptedException, UnsupportedEncodingException {
+    public static void main(String[] args) {
 
         Properties properties = new Properties();
         properties.put("bootstrap.servers", "localhost:9092");
@@ -22,72 +27,63 @@ public class Center
         properties.put("max.poll.records"          , "500");
         properties.put("group.id"          , "my-group");
 
-        runMainLoop(args, properties);
+        RunMainLoop(args, properties);
     }
 
-    static void runMainLoop(String[] args, Properties properties) throws InterruptedException, UnsupportedEncodingException {
+    static void RunMainLoop(String[] args, Properties properties) {
 
-        // Create Kafka producer
-        KafkaConsumer<String, String> consumer = new KafkaConsumer<>(properties);
+        try (KafkaConsumer<String, String> consumer = new KafkaConsumer<>(properties)) {
 
-        try {
-
-            consumer.subscribe(Arrays.asList(properties.getProperty("kafka.topic")));
+            consumer.subscribe(Collections.singletonList(properties.getProperty("kafka.topic")));
 
             System.out.println("Subscribed to topic " + properties.getProperty("kafka.topic"));
 
-            while (true)
-            {
+            while (true) {
+
                 ConsumerRecords<String, String> records = consumer.poll(100);
 
-                for (ConsumerRecord<String, String> record : records)
-                {
-                    Sensor val = decodeMsg(record.value());
+                for (ConsumerRecord<String, String> record : records) {
+                    Sensor val = DecodeMsg(record.value());
                     Position pos = CalculateTargetPosition(val.getPosition(), val.getTargetAngle(), val.getTargetDistance());
-                    System.out.printf("%s=> ", record.key());
-                    System.out.printf("position(x, y): (%.1f, %.1f) \t angle: %.2f \t target position(x,y): (%.1f, %.1f)\n",
+                    System.out.printf("%s => ", record.key());
+                    System.out.printf("position(x, y): (%.1f, %.1f) \t angle: %.2f \t\t target position(x,y): (%.1f, %.1f)\n",
                             val.getPosition().getXCoordinate(), val.getPosition().getYCoordinate(),
                             val.getTargetAngle(), pos.getXCoordinate(), pos.getYCoordinate());
                 }
 
             }
         }
-
-        finally {
-            consumer.close();
-        }
     }
 
-    public static Sensor decodeMsg(String json) {
+    public static Sensor DecodeMsg(String json) {
 
         Gson gson = new Gson();
 
         var msg = gson.fromJson(json, Sensor.class);
 
-        float x = msg.getPosition().getXCoordinate();
-        float y = msg.getPosition().getYCoordinate();
-        float targetX = msg.getTarget().getPosition().getXCoordinate();
-        float targetY = msg.getTarget().getPosition().getYCoordinate();
+        var x = msg.getPosition().getXCoordinate();
+        var y = msg.getPosition().getYCoordinate();
+        var targetX = msg.getTarget().getPosition().getXCoordinate();
+        var targetY = msg.getTarget().getPosition().getYCoordinate();
 
-        float distance = msg.getTargetDistance();
-        float angle = msg.getTargetAngle();
+        var distance = msg.getTargetDistance();
+        var angle = msg.getTargetAngle();
 
         msg.setPosition(new Position(x, y));
         msg.setTarget(new Target(new Position(targetX, targetY)));
         msg.setTargetAngle(angle);
         msg.setTargetDistance(distance);
 
-        //CalculateTargetPosition(msg.getPosition(), msg.getTargetAngle(), msg.getTargetDistance());
         return msg;
     }
 
-    public static Position CalculateTargetPosition(Position sensor, float angle, float distance ){
+    public static Position CalculateTargetPosition(Position sensor, float angle, float distance){
 
         if (angle > 180)
             angle -= 180;
 
-        float x = (float) (distance * Math.cos(Math.toRadians(angle)) + sensor.getXCoordinate());
-        float y = (float) (distance * Math.sin(Math.toRadians(angle)) + sensor.getYCoordinate());
+        var x = (float) (distance * Math.cos(Math.toRadians(angle)) + sensor.getXCoordinate());
+        var y = (float) (distance * Math.sin(Math.toRadians(angle)) + sensor.getYCoordinate());
 
         return new Position(x, y);
     }
